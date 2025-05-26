@@ -6,26 +6,10 @@ from sqlalchemy import create_engine, Column, Integer, String, Text, JSON
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sentence_transformers import SentenceTransformer
+from bot.database.models import async_session as session
+from bot.database.models import User, QueryHistory, Settings, Embedding
 
-model_path = "models/model-Q2_K.gguf"
-llm = Llama(model_path=model_path, n_gpu_layers=40, n_ctx=512, n_batch=512)
 emb_model = SentenceTransformer('all-MiniLM-L6-v2')
-
-DATABASE_URL = "sqlite:///embeddings.db"
-engine = create_engine(DATABASE_URL)
-Base = declarative_base()
-
-class Embedding(Base):
-    __tablename__ = 'embeddings'
-    id = Column(Integer, primary_key=True)
-    url = Column(String, unique=True, nullable=False)
-    data = Column(Text, nullable=False)
-    embedding = Column(JSON, nullable=False)
-
-Base.metadata.create_all(engine)
-
-Session = sessionmaker(bind=engine)
-session = Session()
 
 def find_rel_d(query, top_k=3):
     query_embedding = emb_model.encode(query).reshape(1, -1)

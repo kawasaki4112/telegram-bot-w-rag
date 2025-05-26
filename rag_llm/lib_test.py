@@ -1,6 +1,5 @@
-from llama_cpp import Llama
+from datetime import timedelta
 
-model_path = "models/model-Q2_K.gguf"
-llm = Llama(model_path=model_path, n_gpu_layers=40, n_ctx=512, n_batch=512)
-
-print(llm.model_params)
+dsa = timedelta(hours=22)
+print(strftime("%Y-%m-%d"))
+print(dsa)
