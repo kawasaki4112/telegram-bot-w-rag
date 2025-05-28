@@ -1,68 +1,54 @@
-from sqlalchemy import BigInteger, String, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
-from datetime import datetime, timedelta
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy import String, Integer, DateTime, ForeignKey, event, Enum as SQLAlchemyEnum
+from sqlalchemy.types import JSON
+from datetime import datetime
+from uuid import uuid4
+from enum import Enum
 
-from bot.data.config import DB_PATH
-
-engine = create_async_engine(url=f'sqlite+aiosqlite:///{DB_PATH}')
-
+engine = create_async_engine(url='sqlite+aiosqlite:///bot/database/db.sqlite3')
 async_session = async_sessionmaker(engine)
 
-class Base(AsyncAttrs, DeclarativeBase):
-    pass
+class BaseEntity(DeclarativeBase):
+    __abstract__ = True
 
-class User(Base):
-    __tablename__ = 'users'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    modified_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    increment: Mapped[int] = mapped_column(primary_key=True)
-    user_id = mapped_column(BigInteger)
-    username: Mapped[str] = mapped_column(String(30), nullable=True)
-    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
+@event.listens_for(BaseEntity, "before_update", propagate=True)
+def _update_modified_on(mapper, connection, target):
+    target.modified_on = datetime.utcnow()
 
-    query_history: Mapped['QueryHistory'] = relationship('QueryHistory', back_populates='user')
-    appeals_history: Mapped['Appeals'] = relationship('Appeals', back_populates='user')
+class UserRoleEnum(str, Enum):
+    user = "user"
+    admin = "admin"
 
-class QueryHistory(Base):
-    __tablename__ = 'query_history'
+class User(BaseEntity):
+    __tablename__ = "users"
 
-    increment: Mapped[int] = mapped_column(primary_key=True)
-    user_increment: Mapped[int] = mapped_column(ForeignKey('users.increment'))
-    query: Mapped[str] = mapped_column(String(), nullable=False)
-    timestamp: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    tg_id: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
+    username: Mapped[str] = mapped_column(String, nullable=False)
+    role: Mapped[UserRoleEnum] = mapped_column(SQLAlchemyEnum(UserRoleEnum), default=UserRoleEnum.user)
 
-class Settings(Base):
-    __tablename__ = 'settings'
-    
-    increment: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(), nullable=False)
-    text: Mapped[str] = mapped_column(String(), nullable=False)
-    value: Mapped[str] = mapped_column(String(), nullable=True)
-    bool_value: Mapped[str] = mapped_column(Boolean(), nullable=True)
+    requests: Mapped[list["Request"]] = relationship("Request", back_populates="user")
 
-class Appeals(Base):
-    __tablename__ = 'appeals'
-    
-    increment: Mapped[int] = mapped_column(primary_key=True)
-    user_increment: Mapped[int] = mapped_column(ForeignKey('users.increment'))
-    message_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    is_replied: Mapped[bool] = mapped_column(Boolean, default=False)
-    text: Mapped[str] = mapped_column(String(), nullable=False)
-    timestamp: Mapped[datetime] = mapped_column(default=datetime.utcnow)
-    
+class Request(BaseEntity):
+    __tablename__ = "requests"
 
-class Embedding(Base):
-    __tablename__ = 'embeddings'
-    
-    increment: Mapped[int] = mapped_column(primary_key=True)
-    url: Mapped[int] = mapped_column(unique=True, nullable=False)
-    text: Mapped[int] = mapped_column(nullable=False)
-    embedding: Mapped[int] = mapped_column(nullable=False)
+    question: Mapped[str] = mapped_column(String, nullable=False)
+    answer: Mapped[str] = mapped_column(String, nullable=False)
+    user_tg_id: Mapped[int] = mapped_column(ForeignKey("users.tg_id"))
 
+    user: Mapped["User"] = relationship("User", back_populates="requests")
+
+class Embedding(BaseEntity):
+    __tablename__ = "embeddings"
+
+    url: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    text: Mapped[str] = mapped_column(String, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(JSON, nullable=False)
 
 async def async_main():
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-
+        await conn.run_sync(BaseEntity.metadata.create_all)

@@ -1,14 +1,17 @@
 import json
 import os
-import scrapy
 from scrapy.linkextractors import LinkExtractor
 from scrapy.spiders import CrawlSpider, Rule
+from sqlalchemy.ext.asyncio import AsyncSession
 
-class SVfuSpider(CrawlSpider):
-    name = 's_vfu_spider'
-    allowed_domains = ['s-vfu.ru']
-    start_urls = ['http://s-vfu.ru/']
-    output_file = 'output.json'
+from bot.llm.llm import create_embeddings
+
+class MainSpider(CrawlSpider):
+    url = os.getenv('URL', 's-vfu.ru')
+    name = 'main_spider'
+    allowed_domains = [url]
+    start_urls = [f'http://{url}/']
+    output_file = 'bot/scrapy/parsed_data/output.json'
 
     rules = (
         Rule(LinkExtractor(allow=r's-vfu\.ru'), callback='parse_item', follow=True),
@@ -51,3 +54,4 @@ class SVfuSpider(CrawlSpider):
         with open(self.output_file, 'w', encoding='utf-8') as f:
             data = [{'url': url, 'data': item['data']} for url, item in zip(self.existing_urls, self.crawler.stats.get_value('item_scraped_count'))]
             json.dump(data, f, ensure_ascii=False, indent=4)
+            create_embeddings(data)

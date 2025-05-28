@@ -3,7 +3,7 @@ import logging
 import colorlog
 
 
-PATH_LOGS = "bot/data/logs.log"
+PATH_LOGS = "logs.log"
 bot_logger = logging
 
 # Формат логгирования

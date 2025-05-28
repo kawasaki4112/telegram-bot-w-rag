@@ -1,4 +1,4 @@
-# Scrapy settings for s_vfu_parser project
+# Scrapy settings for parser project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -7,14 +7,14 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = "s_vfu_parser"
+BOT_NAME = "parser"
 
-SPIDER_MODULES = ["s_vfu_parser.spiders"]
-NEWSPIDER_MODULE = "s_vfu_parser.spiders"
+SPIDER_MODULES = ["parser.spiders"]
+NEWSPIDER_MODULE = "parser.spiders"
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-#USER_AGENT = "s_vfu_parser (+http://www.yourdomain.com)"
+#USER_AGENT = "parser (+http://www.yourdomain.com)"
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
@@ -45,13 +45,13 @@ ROBOTSTXT_OBEY = True
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
-#    "s_vfu_parser.middlewares.SVfuParserSpiderMiddleware": 543,
+#    "parser.middlewares.SVfuParserSpiderMiddleware": 543,
 #}
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #DOWNLOADER_MIDDLEWARES = {
-#    "s_vfu_parser.middlewares.SVfuParserDownloaderMiddleware": 543,
+#    "parser.middlewares.SVfuParserDownloaderMiddleware": 543,
 #}
 
 # Enable or disable extensions
@@ -63,7 +63,7 @@ ROBOTSTXT_OBEY = True
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 #ITEM_PIPELINES = {
-#    "s_vfu_parser.pipelines.SVfuParserPipeline": 300,
+#    "parser.pipelines.SVfuParserPipeline": 300,
 #}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
