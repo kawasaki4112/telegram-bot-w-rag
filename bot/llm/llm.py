@@ -1,19 +1,28 @@
 import os
 import json
+import colorama
 import numpy as np
+import faiss
+from sentence_transformers import SentenceTransformer
 from llama_cpp import Llama
-from sklearn.metrics.pairwise import cosine_similarity
 
-from ..database.requests import embedding_crud
+from ..database.requests import embedding_crud, request_crud
 from ..database.models import Embedding
-
+ 
 MODEL_PATH = os.getenv('LLM_PATH', 'bot/llm/models/model-q4_K.gguf')
-llm = Llama(model_path=MODEL_PATH, embedding=True, n_gpu_layers=40, n_ctx=512)
+llm = Llama(model_path=MODEL_PATH, n_gpu_layers=-1, n_ctx=12000, n_batch=2048)
+embedder = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
-async def create_embeddings(file_path: str = 'bot/scrapy/parsed_data/output.json') -> None:
-    """
-    Загружает JSON-файл и создает эмбеддинги для новых записей.
-    """
+
+async def create_embeddings() -> None:
+    file_path = 'bot/scrapy/parsed_data/output.json'
+    # Проверяем, существует ли файл и не пуст ли он
+    if not os.path.exists(file_path):
+        print(colorama.Fore.LIGHTRED_EX + f"Файл {file_path} не найден, пропуск создания эмбеддингов")
+        return
+    if os.path.getsize(file_path) == 0:
+        print(colorama.Fore.LIGHTYELLOW_EX + f"Файл {file_path} пустой, пропуск создания эмбеддингов")
+        return
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -26,62 +35,77 @@ async def create_embeddings(file_path: str = 'bot/scrapy/parsed_data/output.json
             if existing_record:
                 continue
 
-            embedding_response = llm.create_embedding(text)
-            embedding_vector = embedding_response["embedding"][0]
-
+            # Вычисление эмбеддинга
+            vector = embedder.encode(text, show_progress_bar=False)
             await embedding_crud.create(
                 url=url,
                 text=text,
-                embedding=embedding_vector
+                embedding=vector.tolist()
             )
 
     except Exception as e:
-        print(f"Ошибка при сохранении эмбеддингов: {e}")
+        print(colorama.Fore.LIGHTRED_EX + f"Ошибка при сохранении эмбеддингов: {e}")
 
-async def search_relevant_data(query: str) -> list[dict]:
-    """
-    Ищет релевантные данные по запросу.
-    """
-    embedding = llm.create_embedding(query)
-    if isinstance(embedding, dict) and "data" in embedding:
-        query_embedding = embedding["data"][0]
-    else:
-        raise ValueError("Неверный формат эмбеддинга")
 
+async def search_relevant_data(query: str, top_k: int = 5) -> list[dict]:
+ 
+    query_vec = embedder.encode(query, show_progress_bar=False)
+    query_vec = np.array([query_vec]).astype('float32')
+    faiss.normalize_L2(query_vec)
+ 
     embeddings = await embedding_crud.get_list()
+    if not embeddings:
+        return []
+ 
+    vectors = np.array([emb.embedding for emb in embeddings]).astype('float32')
+    faiss.normalize_L2(vectors)
+ 
+    index = faiss.IndexFlatIP(vectors.shape[1])  
+    index.add(vectors)
+    distances, indices = index.search(query_vec, top_k)
 
-    similarities = [
-        {
+    results = []
+    for score, idx in zip(distances[0], indices[0]):
+        emb = embeddings[idx]
+        results.append({
             "url": emb.url,
             "data": emb.text,
-            "similarity": cosine_similarity([query_embedding], [emb.embedding])[0][0]
-        }
-        for emb in embeddings
-    ]
+            "similarity": float(score)
+        })
 
-    sorted_results = sorted(similarities, key=lambda x: x["similarity"], reverse=True)
-    return sorted_results
+    return results
 
-async def query_llm(question: str) -> str:
-    relevant_docs = await search_relevant_data(question)
 
-    context_str = "\n".join(f"{doc['url']}: {doc['data']}" for doc in relevant_docs[:5])  # топ-5
+async def query_llm(question: str, tg_id: int) -> str:
+ 
+    relevant = await search_relevant_data(question)
+    context_str = "\n".join(f"{d['url']}: {d['data']}" for d in relevant)
     rules = (
-        "1. Отвечать только на тему СВФУ (Северо-Восточный федеральный университет). "
-        "2. Отвечать официальным тоном."
+    "1. Отвечать только на тему СВФУ (Северо-Восточный федеральный университет). "
+    "2. Отвечать официальным тоном."
+    "3. Ничего не придумывать, если не знаешь ответа или если в контексте нет нужной информации!"
+    "4. Если не знаешь ответа, то отвечать, что не знаешь."
     )
 
-    prompt = f"""Правила: {rules}
-Контекст: {context_str}
-Пользователь: {question}
-Оператор:"""
+    prompt = (
+        f"Правила: {rules}\n"
+        f"Контекст:\n{context_str}\n"
+        f"Пользователь: {question}\n"
+        f"Оператор:"
+    )
 
-    response = await llm.async_call(
+    response = llm(
         prompt=prompt,
-        max_tokens=512,
+        max_tokens=2048,
         temperature=0.7,
         top_p=0.9,
         repeat_penalty=1.1,
-        presence_penalty=0.5
+        presence_penalty=0.5,
+        stop = ["\n\n", "### Конец ответа"]
+    )
+    await request_crud.create(
+        question=question,
+        answer=response['choices'][0]['text'],
+        user_tg_id=tg_id
     )
     return response['choices'][0]['text']
