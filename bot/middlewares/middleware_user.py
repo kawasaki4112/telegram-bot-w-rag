@@ -15,7 +15,6 @@ class ExistsUserMiddleware(BaseMiddleware):
             user_login = this_user.username or ""
 
             if get_user is None:
-                # создаём нового пользователя
                 await rq.create(tg_id=user_id, username=user_login.lower())
             else:
                 # если имя пользователя изменилось — обновляем

@@ -16,7 +16,6 @@ embedder = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 async def create_embeddings() -> None:
     file_path = 'bot/scrapy/parsed_data/output.json'
-    # Проверяем, существует ли файл и не пуст ли он
     if not os.path.exists(file_path):
         print(colorama.Fore.LIGHTRED_EX + f"Файл {file_path} не найден, пропуск создания эмбеддингов")
         return

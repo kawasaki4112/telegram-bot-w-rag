@@ -1,6 +1,6 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy import String, Integer, DateTime, ForeignKey, event, Enum as SQLAlchemyEnum
+from sqlalchemy import String, Integer, DateTime, ForeignKey, event, Enum as SQLAEnum
 from sqlalchemy.types import JSON
 from datetime import datetime
 from uuid import uuid4
@@ -29,7 +29,7 @@ class User(BaseEntity):
 
     tg_id: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
     username: Mapped[str] = mapped_column(String, nullable=False)
-    role: Mapped[UserRoleEnum] = mapped_column(SQLAlchemyEnum(UserRoleEnum), default=UserRoleEnum.user)
+    role: Mapped[UserRoleEnum] = mapped_column(SQLAEnum(UserRoleEnum), default=UserRoleEnum.user)
 
     requests: Mapped[list["Request"]] = relationship("Request", back_populates="user")
 

@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import timezone
+from datetime import datetime
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 
@@ -18,28 +19,28 @@ async def run_parser():
         process.crawl(MainSpider)
         process.start()
     except Exception:
-        print(colorama.Fore.LIGHTRED_EX + "~~~~~ Error while running parser ~~~~~")
-        bot_logger.exception("Error while running parser")
+        print(colorama.Fore.LIGHTRED_EX + "~~~~~ Ошибка при выполнении парсинга ~~~~~")
+        bot_logger.exception("Ошибка при выполнении парсинга")
     finally:
         await create_embeddings()
-        print(colorama.Fore.LIGHTGREEN_EX + "~~~~~ Parser finished and embeddings created ~~~~~")
-        bot_logger.info("Parser finished and embeddings created")
+        print(colorama.Fore.LIGHTGREEN_EX + "~~~~~ Парсинг закончен, эмбеддинги созданы ~~~~~")
+        bot_logger.info("Парсинг закончен, эмбеддинги созданы")
 
 def schedule_parser():
     scheduler = AsyncIOScheduler(timezone=timezone(os.getenv('TIMEZONE', 'Asia/Yakutsk')))
-    scheduler.add_job(run_parser, 'cron', day='*/3', hour=1)
+    scheduler.add_job(run_parser, 'interval', days=3, next_run_time=datetime.utcnow())
     scheduler.start()
 
 async def main() -> None:
-    try:
-        await async_main()
+    try:        
         load_dotenv()
+        await async_main()
         dp = Dispatcher()
         bot = Bot(token=os.getenv('TOKEN'))
         register_all_middlwares(dp)
         register_all_routers(dp)
-        # await run_parser()
-        # schedule_parser()
+        await run_parser()
+        schedule_parser()
         await create_embeddings()
         
         bot_logger.warning("BOT WAS STARTED")
