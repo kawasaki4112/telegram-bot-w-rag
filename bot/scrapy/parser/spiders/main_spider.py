@@ -23,11 +23,13 @@ class MainSpider(CrawlSpider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.existing_urls = set()
+        self.items = []
         if os.path.exists(self.output_file):
             with open(self.output_file, 'r', encoding='utf-8') as f:
                 try:
                     data = json.load(f)
                     self.existing_urls = {item['url'] for item in data}
+                    self.items.extend(data)
                 except json.JSONDecodeError:
                     pass
 
@@ -55,8 +57,10 @@ class MainSpider(CrawlSpider):
                 'data': ' '.join(texts)
             }
             self.existing_urls.add(response.url)
+            self.items.append(item)
             yield item
 
     def closed(self, reason):
-        with open(self.output_file, 'w', encoding='utf-8') as f:
-            json.dump(self.items, f, ensure_ascii=False, indent=4)
+        if self.items:
+            with open(self.output_file, 'w', encoding='utf-8') as f:
+                json.dump(self.items, f, ensure_ascii=False, indent=4)
