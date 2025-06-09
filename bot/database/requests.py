@@ -1,10 +1,6 @@
 from bot.database.models import async_session
 from bot.database.models import User, Request, Embedding
-from sqlalchemy import select, update, func
-from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy import update, delete
+from sqlalchemy import select, update, delete
 
 class CRUDUtility:
     def __init__(self, model):

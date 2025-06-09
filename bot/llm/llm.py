@@ -51,7 +51,6 @@ async def search_relevant_data(query: str, top_k: int = 5) -> list[dict]:
 
 
 async def query_llm(question: str, tg_id: int) -> str:
-    tema = os.getenv('SITE_URL')
     relevant = await search_relevant_data(question)
     context_str = "\n".join(f"{d['url']}: {d['data']}" for d in relevant)
     rules = (

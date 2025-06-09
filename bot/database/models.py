@@ -1,12 +1,13 @@
+import os
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy import String, Integer, DateTime, ForeignKey, event, Enum as SQLAEnum
 from sqlalchemy.types import JSON
 from datetime import datetime
-from uuid import uuid4
 from enum import Enum
 
-engine = create_async_engine(url='sqlite+aiosqlite:///bot/database/db.sqlite3')
+db = os.getenv("DB", "sqlite+aiosqlite:///bot/database/db.sqlite3")
+engine = create_async_engine(url=db)
 async_session = async_sessionmaker(engine)
 
 class BaseEntity(DeclarativeBase):
