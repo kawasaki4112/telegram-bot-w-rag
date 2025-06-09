@@ -1,5 +1,4 @@
 import asyncio, logging, os, sys, colorama
-os.environ.setdefault('SCRAPY_SETTINGS_MODULE', 'parser.settings')
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -15,6 +14,7 @@ from parser.spiders.full_spider import FullSpider
 
 def run_parser():
     try:
+        print(colorama.Fore.LIGHTYELLOW_EX + "~~~~~ Запуск парсинга ~~~~~")
         process = CrawlerProcess(get_project_settings())
         process.crawl(FullSpider)
         process.start()
