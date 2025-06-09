@@ -1,10 +1,12 @@
-import asyncio, logging, os, sys, colorama
+import asyncio, sys
+import logging, os, colorama
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import timezone
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
+from scrapy.utils.log import configure_logging
 
 from bot.routers import register_all_routers
 from bot.database.models import async_main
@@ -12,12 +14,13 @@ from bot.middlewares import register_all_middlwares
 from bot.utils.misc.bot_logging import bot_logger
 from parser.spiders.full_spider import FullSpider
 
+
 def run_parser():
     try:
-        print(colorama.Fore.LIGHTYELLOW_EX + "~~~~~ Запуск парсинга ~~~~~")
+        configure_logging({'LOG_LEVEL': 'INFO'})
         process = CrawlerProcess(get_project_settings())
         process.crawl(FullSpider)
-        process.start()
+        process.start
     except Exception:
         print(colorama.Fore.LIGHTRED_EX + "~~~~~ Ошибка при выполнении парсинга ~~~~~")
         bot_logger.exception("Ошибка при выполнении парсинга")
@@ -29,7 +32,7 @@ def schedule_parser():
 
 async def main() -> None:
     try:        
-        load_dotenv()
+        load_dotenv(override=True)
         await async_main()
         dp = Dispatcher()
         bot = Bot(token=os.getenv('TOKEN'))

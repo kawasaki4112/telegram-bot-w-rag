@@ -5,9 +5,9 @@ import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
 from llama_cpp import Llama
-
+from datetime import datetime
 from ..database.requests import embedding_crud, request_crud
-from ..database.models import Embedding
+
  
 MODEL_PATH = os.getenv('LLM_PATH', 'bot/llm/models/model-q4_K.gguf')
 llm = Llama(model_path=MODEL_PATH, n_gpu_layers=-1, n_ctx=12000, n_batch=2048)
@@ -21,7 +21,7 @@ async def create_embedding(text: str) -> list[float]:
     )
     return emb.tolist()
 
-async def search_relevant_data(query: str, top_k: int = 5) -> list[dict]:
+async def search_relevant_data(query: str, top_k: int = 3) -> list[dict]:
  
     query_vec = embedder.encode(query, show_progress_bar=False)
     query_vec = np.array([query_vec]).astype('float32')
@@ -54,10 +54,11 @@ async def query_llm(question: str, tg_id: int) -> str:
     relevant = await search_relevant_data(question)
     context_str = "\n".join(f"{d['url']}: {d['data']}" for d in relevant)
     rules = (
-    "1. Отвечать только на тему "
+    f"1. Cегодня {datetime.now().strftime('%d.%m.%Y')}. "
     "2. Отвечать официальным тоном. "
     "3. Ничего не придумывать, если не знаешь ответа или если в контексте нет нужной информации! "
-    "4. Если не знаешь ответа, то отвечать, что не знаешь."
+    "4. Если не знаешь ответа, то отвечать, что не знаешь. "
+    "5. писать \"### Конец ответа\" в конце ответа, чтобы бот понимал, что ответ закончен. "
     )
 
     prompt = (
@@ -74,7 +75,7 @@ async def query_llm(question: str, tg_id: int) -> str:
         top_p=0.9,
         repeat_penalty=1.1,
         presence_penalty=0.5,
-        stop = ["\n\n", "### Конец ответа"]
+        stop = ["\n\n", "### Конец ответа", "\nПользователь:", "\nОператор:", "Пользователь:", "Оператор:"]
     )
     await request_crud.create(
         question=question,

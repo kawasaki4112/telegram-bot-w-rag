@@ -47,7 +47,7 @@ class Embedding(BaseEntity):
     __tablename__ = "embeddings"
 
     url: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    text: Mapped[str] = mapped_column(String, nullable=False)
+    text: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     embedding: Mapped[list[float]] = mapped_column(JSON, nullable=False)
 
 async def async_main():
