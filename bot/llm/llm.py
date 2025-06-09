@@ -1,6 +1,6 @@
 import os
 import json
-import colorama
+import asyncio
 import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
@@ -14,37 +14,12 @@ llm = Llama(model_path=MODEL_PATH, n_gpu_layers=-1, n_ctx=12000, n_batch=2048)
 embedder = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 
-async def create_embeddings() -> None:
-    file_path = 'bot/scrapy/parsed_data/output.json'
-    if not os.path.exists(file_path):
-        print(colorama.Fore.LIGHTRED_EX + f"Файл {file_path} не найден, пропуск создания эмбеддингов")
-        return
-    if os.path.getsize(file_path) == 0:
-        print(colorama.Fore.LIGHTYELLOW_EX + f"Файл {file_path} пустой, пропуск создания эмбеддингов")
-        return
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-
-        for item in data:
-            url = item['url']
-            text = item['data']
-
-            existing_record = await embedding_crud.get(url=url)
-            if existing_record:
-                continue
-
-            # Вычисление эмбеддинга
-            vector = embedder.encode(text, show_progress_bar=False)
-            await embedding_crud.create(
-                url=url,
-                text=text,
-                embedding=vector.tolist()
-            )
-
-    except Exception as e:
-        print(colorama.Fore.LIGHTRED_EX + f"Ошибка при сохранении эмбеддингов: {e}")
-
+async def create_embedding(text: str) -> list[float]:
+    emb = await asyncio.get_event_loop().run_in_executor(
+        None,
+        lambda: embedder.encode(text, show_progress_bar=False)
+    )
+    return emb.tolist()
 
 async def search_relevant_data(query: str, top_k: int = 5) -> list[dict]:
  
@@ -76,13 +51,13 @@ async def search_relevant_data(query: str, top_k: int = 5) -> list[dict]:
 
 
 async def query_llm(question: str, tg_id: int) -> str:
- 
+    tema = os.getenv('SITE_URL')
     relevant = await search_relevant_data(question)
     context_str = "\n".join(f"{d['url']}: {d['data']}" for d in relevant)
     rules = (
-    "1. Отвечать только на тему СВФУ (Северо-Восточный федеральный университет). "
-    "2. Отвечать официальным тоном."
-    "3. Ничего не придумывать, если не знаешь ответа или если в контексте нет нужной информации!"
+    "1. Отвечать только на тему "
+    "2. Отвечать официальным тоном. "
+    "3. Ничего не придумывать, если не знаешь ответа или если в контексте нет нужной информации! "
     "4. Если не знаешь ответа, то отвечать, что не знаешь."
     )
 
@@ -92,7 +67,7 @@ async def query_llm(question: str, tg_id: int) -> str:
         f"Пользователь: {question}\n"
         f"Оператор:"
     )
-
+    print("\n",prompt,"\n")
     response = llm(
         prompt=prompt,
         max_tokens=2048,

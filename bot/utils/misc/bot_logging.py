@@ -6,6 +6,8 @@ import colorlog
 PATH_LOGS = "logs.log"
 bot_logger = logging
 
+bot_logger.getLogger("aiosqlite").setLevel(logging.WARNING)
+
 # Формат логгирования
 log_formatter_file = bot_logger.Formatter("%(levelname)s | %(asctime)s | %(filename)s:%(lineno)d | %(message)s")
 log_formatter_console = colorlog.ColoredFormatter(

@@ -1,4 +1,5 @@
 import asyncio, logging, os, sys, colorama
+os.environ.setdefault('SCRAPY_SETTINGS_MODULE', 'bot.scrapy.parser.settings')
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -11,24 +12,20 @@ from bot.routers import register_all_routers
 from bot.database.models import async_main
 from bot.middlewares import register_all_middlwares
 from bot.utils.misc.bot_logging import bot_logger
-from bot.scrapy.parser.spiders.main_spider import MainSpider
-from bot.llm.llm import create_embeddings
+from bot.scrapy.parser.spiders.full_spider import FullSpider
+
 async def run_parser():
     try:
         process = CrawlerProcess(get_project_settings())
-        process.crawl(MainSpider)
+        process.crawl(FullSpider)
         process.start()
     except Exception:
         print(colorama.Fore.LIGHTRED_EX + "~~~~~ Ошибка при выполнении парсинга ~~~~~")
         bot_logger.exception("Ошибка при выполнении парсинга")
-    finally:
-        await create_embeddings()
-        print(colorama.Fore.LIGHTGREEN_EX + "~~~~~ Парсинг закончен, эмбеддинги созданы ~~~~~")
-        bot_logger.info("Парсинг закончен, эмбеддинги созданы")
 
 def schedule_parser():
     scheduler = AsyncIOScheduler(timezone=timezone(os.getenv('TIMEZONE', 'Asia/Yakutsk')))
-    scheduler.add_job(run_parser, 'interval', days=3, next_run_time=datetime.utcnow())
+    scheduler.add_job(run_parser, 'cron', day_of_week='mon', hour=1, minute=0, second=0)
     scheduler.start()
 
 async def main() -> None:
@@ -41,7 +38,6 @@ async def main() -> None:
         register_all_routers(dp)
         await run_parser()
         schedule_parser()
-        await create_embeddings()
         
         bot_logger.warning("BOT WAS STARTED")
         print(colorama.Fore.LIGHTYELLOW_EX + f"~~~~~ Bot was started - @{(await bot.get_me()).username} ~~~~~")
@@ -57,7 +53,7 @@ async def main() -> None:
 if __name__ == "__main__":
     try:
         asyncio.run(main())
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.DEBUG)
     except(KeyboardInterrupt, SystemExit):
         bot_logger.warning("Bot was stopped")
     finally:
