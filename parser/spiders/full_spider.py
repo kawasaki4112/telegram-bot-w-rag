@@ -5,20 +5,22 @@ from urllib.parse import urlparse
 from io import BytesIO
 
 import scrapy
+from scrapy.spiders import CrawlSpider, Rule
+from scrapy.linkextractors import LinkExtractor
 from dotenv import load_dotenv
 
 from pdfminer.high_level import extract_text
 import pdfplumber
 
-
 load_dotenv(override=True)
 BASE_URL = os.getenv('SITE_URL')
 
-class FullSpider(scrapy.Spider):
+domain = urlparse(BASE_URL).netloc
+www_domain = 'www.' + domain if not domain.startswith('www.') else domain
+
+class FullSpider(CrawlSpider):
     name = 'full_spider'
 
-    domain = urlparse(BASE_URL).netloc
-    www_domain = 'www.' + domain if not domain.startswith('www.') else domain
     allowed_domains = [domain, www_domain]
     start_urls = [BASE_URL]
 
@@ -27,6 +29,27 @@ class FullSpider(scrapy.Spider):
     prev_year = year - 1
     four_digits_re = re.compile(r'(\d{4})')
 
+    rules = (
+        Rule(
+            LinkExtractor(allow_domains=allowed_domains),
+            callback='parse_item',
+            follow=True,
+            process_links='filter_links'
+        ),
+    )
+
+    def filter_links(self, links):
+        if not self.is_check_date:
+            return links
+
+        filtered = []
+        for link in links:
+            if self.is_valid_year_in_url(link.url):
+                filtered.append(link)
+            else:
+                self.logger.debug(f"Skipping URL (invalid year): {link.url}")
+        return filtered
+
     def is_valid_year_in_url(self, url: str) -> bool:
         for match in self.four_digits_re.findall(url):
             y = int(match)
@@ -34,7 +57,7 @@ class FullSpider(scrapy.Spider):
                 return False
         return True
 
-    def parse(self, response):
+    def parse_item(self, response):
         content_type = response.headers.get('Content-Type', b'').decode('utf-8', errors='ignore')
 
         if 'application/pdf' in content_type:
@@ -58,7 +81,6 @@ class FullSpider(scrapy.Spider):
             }
             return
 
-        # — ветка для HTML остаётся без изменений —
         if 'text/html' not in content_type:
             return
 
@@ -68,18 +90,8 @@ class FullSpider(scrapy.Spider):
         body = ' '.join(p.strip() for p in paragraphs if p.strip())
         yield {'url': response.url, 'text': f"{title} {body}"}
 
-        for href in response.css('a::attr(href)').getall():
-            full_url = response.urljoin(href)
-            netloc = urlparse(full_url).netloc
-
-            if netloc not in self.allowed_domains:
-                continue
-            if self.is_check_date and not self.is_valid_year_in_url(full_url):
-                self.logger.debug(f"Skipping URL (invalid year): {full_url}")
-                continue
-            yield scrapy.Request(full_url, callback=self.parse)
-
     def parse_pdf(self, data: bytes) -> str:
         fp = BytesIO(data)
         text = extract_text(fp)
         return text
+
