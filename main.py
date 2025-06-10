@@ -1,4 +1,8 @@
 import asyncio, sys
+if sys.platform.lower().startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+
 import logging, os, colorama
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
@@ -6,7 +10,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import timezone
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
-from scrapy.utils.log import configure_logging
 
 from bot.routers import register_all_routers
 from bot.database.models import async_main
@@ -17,10 +20,9 @@ from parser.spiders.full_spider import FullSpider
 
 def run_parser():
     try:
-        configure_logging({'LOG_LEVEL': 'INFO'})
         process = CrawlerProcess(get_project_settings())
         process.crawl(FullSpider)
-        process.start
+        process.start()
     except Exception:
         print(colorama.Fore.LIGHTRED_EX + "~~~~~ Ошибка при выполнении парсинга ~~~~~")
         bot_logger.exception("Ошибка при выполнении парсинга")
@@ -34,12 +36,12 @@ async def main() -> None:
     try:        
         load_dotenv(override=True)
         await async_main()
+        run_parser()
+        schedule_parser()
         dp = Dispatcher()
         bot = Bot(token=os.getenv('TOKEN'))
         register_all_middlwares(dp)
         register_all_routers(dp)
-        run_parser()
-        schedule_parser()
         
         bot_logger.warning("BOT WAS STARTED")
         print(colorama.Fore.LIGHTYELLOW_EX + f"~~~~~ Bot was started - @{(await bot.get_me()).username} ~~~~~")

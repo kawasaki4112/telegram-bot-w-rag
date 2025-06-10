@@ -10,7 +10,7 @@ from ..database.requests import embedding_crud, request_crud
 
  
 MODEL_PATH = os.getenv('LLM_PATH', 'bot/llm/models/model-q4_K.gguf')
-llm = Llama(model_path=MODEL_PATH, n_gpu_layers=-1, n_ctx=12000, n_batch=2048)
+llm = Llama(model_path=MODEL_PATH, n_gpu_layers=-1, n_ctx=50000, n_batch=2048)
 embedder = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 
@@ -21,12 +21,12 @@ async def create_embedding(text: str) -> list[float]:
     )
     return emb.tolist()
 
-async def search_relevant_data(query: str, top_k: int = 3) -> list[dict]:
+async def search_relevant_data(query: str, top_k: int = 5) -> list[dict]:
  
     query_vec = embedder.encode(query, show_progress_bar=False)
     query_vec = np.array([query_vec]).astype('float32')
     faiss.normalize_L2(query_vec)
- 
+
     embeddings = await embedding_crud.get_list()
     if not embeddings:
         return []
@@ -58,7 +58,8 @@ async def query_llm(question: str, tg_id: int) -> str:
     "2. Отвечать официальным тоном. "
     "3. Ничего не придумывать, если не знаешь ответа или если в контексте нет нужной информации! "
     "4. Если не знаешь ответа, то отвечать, что не знаешь. "
-    "5. писать \"### Конец ответа\" в конце ответа, чтобы бот понимал, что ответ закончен. "
+    "5. Отвечать четко и кратко на вопрос. "
+    "6. писать \"### Конец ответа\" в конце ответа, чтобы бот понимал, что ответ закончен. "
     )
 
     prompt = (

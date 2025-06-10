@@ -20,7 +20,6 @@ async def start(message: Message, state: FSMContext):
 async def process_request(message: Message, state: FSMContext):
     try:
         answer = await query_llm(message.text, message.from_user.id)
-        # answer = "answer"
     except Exception as e:
         bot_logger.exception("Ошибка при запросе к LLM: ", e)
         await message.answer(

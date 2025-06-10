@@ -1,4 +1,4 @@
-import os
+import os, asyncio
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy import String, Integer, DateTime, ForeignKey, event, Enum as SQLAEnum
@@ -46,10 +46,14 @@ class Request(BaseEntity):
 class Embedding(BaseEntity):
     __tablename__ = "embeddings"
 
-    url: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    text: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    url: Mapped[str] = mapped_column(String(2083), unique=True, nullable=False)
+    text: Mapped[str] = mapped_column(String, nullable=False)
     embedding: Mapped[list[float]] = mapped_column(JSON, nullable=False)
-
+    
 async def async_main():
     async with engine.begin() as conn:
         await conn.run_sync(BaseEntity.metadata.create_all)
+
+
+if __name__ == "__main__":
+    asyncio.run(async_main())
