@@ -76,7 +76,7 @@ async def query_llm(question: str, tg_id: int) -> str:
         top_p=0.9,
         repeat_penalty=1.1,
         presence_penalty=0.5,
-        stop = ["\n\n", "### Конец ответа", "\nПользователь:", "\nОператор:", "Пользователь:", "Оператор:"]
+        stop = ["\n\n", "### Конец ответа", "\nПользователь:", "\nОператор:", "Пользователь:", "Оператор:", "bot:", "assistant:", "user:", "ответ:", "answer:"]
     )
     await request_crud.create(
         question=question,
